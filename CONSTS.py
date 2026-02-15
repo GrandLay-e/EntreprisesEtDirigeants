@@ -1,0 +1,1 @@
+API_BASE_URL = 'https://recherche-entreprises.api.gouv.fr/search?q='
