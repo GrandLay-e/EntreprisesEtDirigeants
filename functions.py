@@ -102,20 +102,6 @@ def filter_companys_data(company:dict)-> dict:
                             {'adresse' : company.get('siege').get('adresse'),
                             'dirigeants' : get_dirigeants(company)}
 
-# def deep_research(request:str):
-#     all_infos = {}
-#     all_results = get_all_results(request)
-#     for result in all_results:
-#         filtred_result = filter_companys_data(result)
-#         if filtred_result.get('dirigeants'):
-#             for dirigeant in filtred_result.get('dirigeants'):
-#                 if dirigeant.get('type') == 'entreprise':
-#                     siren = filtred_result.get('dirigeants').get('siren')
-#                     filtred_result.get('dirigeants').get('siren').update(
-#                         deep_research(API_BASE_URL + siren)
-#                     )
-#             all_infos.update(filtred_result)
-#     return all_infos
 
 def deep_research(request: str, visited=None):
     if visited is None:
