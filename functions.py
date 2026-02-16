@@ -52,7 +52,6 @@ def get_all_results(request : str) -> list:
             complete_request = request + f"&page={i}"
             all_results.extend(get_requests_json(complete_request).get('results'))
     except Exception as e:
-        print("Erreur dans la fonction get_all_results", e)
         pass
     return all_results
 
