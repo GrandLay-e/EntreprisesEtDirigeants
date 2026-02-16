@@ -10,4 +10,4 @@
 /httpRequests/
 /.idea
 /__pycache__
-
+*.json

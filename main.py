@@ -1,7 +1,5 @@
 from functions import *
 
-# response = get_infos_by_siren('852165745')
-response = get_all_pages(API_BASE_URL + 'louis vuitton')
-
-for res in response:
-    pprint(filter_companys_data(res))
+recherche = input("Qu'est-ce que vous cherchez ? : ")
+response = deep_research(API_BASE_URL + recherche)
+write_to_json(response, f"{recherche}.json")
