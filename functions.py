@@ -1,7 +1,12 @@
-from time import sleep
 import requests
+from bs4 import BeautifulSoup
 import json
+
+from time import sleep
+from sys import argv
 from pprint import pprint
+from urllib.parse import urljoin
+
 from CONSTS import *
 
 def get_requests_json(request:str) -> dict:
@@ -46,7 +51,6 @@ def get_all_results(request : str) -> list:
     result = get_requests_json(request)
     nb_pages = result.get('total_pages')
 
-    print(nb_pages)
     try:
         for i in range(1, nb_pages+1):
             complete_request = request + f"&page={i}"
@@ -71,7 +75,7 @@ def filtred_dirigeants_data(dirigeants:list[dict]) -> list:
 
             all_dirigeants.append(
                 {
-                    'type' : 'personne',
+                    # 'type' : 'personne',
                     'nom' : dirigeant.get('nom'),
                     'prenom' : dirigeant.get('prenoms'),
                     'date_naissance' : date_naissance,
@@ -81,8 +85,7 @@ def filtred_dirigeants_data(dirigeants:list[dict]) -> list:
         elif dirigeant.get('type_dirigeant') == 'personne morale':
             all_dirigeants.append(
                 {
-                    'type' : 'entreprise',
-                    'raison_sociale' : dirigeant.get('denomination'),
+                    # 'type' : 'entreprise',
                     'siren' : dirigeant.get('siren'),
                     'qualite' : dirigeant.get('qualite')
                 }
@@ -99,10 +102,11 @@ def filter_companys_data(company:dict)-> dict:
                             'date_fermeture'
                             ]} |\
                             {'adresse' : company.get('siege').get('adresse'),
-                            'dirigeants' : get_dirigeants(company)}
-
+                            'dirigeants' : get_dirigeants(company),
+                            'activite_principale' : get_principal_activity(company.get('siege').get('activite_principale'))}
 
 def deep_research(request: str, visited=None):
+    print(request)
     if visited is None:
         visited = set()
 
@@ -124,7 +128,6 @@ def deep_research(request: str, visited=None):
             for dirigeant in dirigeants:
                 if dirigeant.get('siren'):  # entreprise
                     child_siren = dirigeant.get('siren')
-                    # print(child_siren)
                     dirigeant['details'] = deep_research(
                         API_BASE_URL + child_siren,
                         visited
@@ -135,5 +138,52 @@ def deep_research(request: str, visited=None):
     return all_infos
 
 def write_to_json(json_content, json_file):
+    if len(json_content) == 0:
+        return
     with open(json_file, 'w', encoding='utf-8') as f:
-        json.dump(json_content, f, indent=4)
+        json.dump(json_content, f, ensure_ascii=False, indent=4)
+
+def get_argv_elements():
+    arguments = argv[1:]
+    if len(arguments) > 2 \
+        and (arguments[0] != '-r' and arguments[0] != '--research'):
+        return {'error' : 'too many arguments sent, two required ! '}
+    if arguments[0] == '-s' or arguments[0] == '--siren':
+        if len(arguments[1]) != 9 or not arguments[1].isdigit():
+            return {"error" : "The given siren is invalid !"}
+        return {'siren' : arguments[1]}
+    elif arguments[0] == '-r' or arguments[0] == '--research' :
+        return {'search' : ' '.join(arguments[1:])}
+    elif arguments[0] == '-h' or arguments[0] == '--help':
+        if len(arguments) > 1:
+             return {'error' : 'too many arguments sent, two required ! '}
+        return {'help' : 1}
+    else:
+        return {'error' : 'invalid input !'}
+
+def display_documentation():
+    return f"""
+    Welcome.
+
+    To use this application, execute it with one of the following parameters:
+
+    -s, --siren <9-digit number>
+            Search using a valid SIREN number (e.g., 123456789).
+
+    -r, --research <query>
+            Perform a research query with the specified text.
+
+    -h, --help
+            Display this help message.
+
+    """
+
+def get_principal_activity(code:str) -> str:
+    request = urljoin(INSEE_CODE_URL, code)
+    response = requests.get(request)
+    if response.status_code != 200:
+        return "Request error !"
+    else:
+        soup = BeautifulSoup(response.text, 'html.parser')
+        principal_title = soup.select_one('h2.titre-principal').getText().split(':')[1]
+        return principal_title        
