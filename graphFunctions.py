@@ -177,10 +177,14 @@ def add_nodes_and_edges_to_network(graph: dict, net: Network) -> None:
         shape = "dot" if is_personne else "box"
         size = 25 if is_personne else 30
         
+        if node_data["type"] == "personne":
+            title = f"{node_data['label']}\nDate de naissance: {node_data['data']['date_naissance']}\nQualité: {node_data['data']['qualite']}"
+        else:
+            title = f"{node_data['label']}\nAdresse: {node_data['data']['adresse']}\nActivité: {node_data['data']['activite']}"
         net.add_node(
             node_id,
             label=node_data["label"],
-            title=f"{node_data['label']} ({node_data['type']})",
+            title=title,
             color=color,
             shape=shape,
             size=size,
