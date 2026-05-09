@@ -7,9 +7,11 @@ from sys import argv
 from pprint import pprint
 from urllib.parse import urljoin
 
+from classes import *
 from CONSTS import *
 
 def get_requests_json(request:str) -> dict:
+    print(f"Requesting : {request}")
     sleep(0.15) 
     result = requests.get(request + '&per_page=25')
     if result.status_code != 200:
@@ -105,43 +107,84 @@ def filter_companys_data(company:dict)-> dict:
                             'dirigeants' : get_dirigeants(company),
                             'activite_principale' : get_principal_activity(company.get('siege').get('activite_principale'))}
 
-def deep_research(request: str, visited=None):
-    print(request)
+def construct_personne(dirigeant:dict) -> Personne:
+    return Personne(
+        nom=dirigeant.get('nom'),
+        prenom=dirigeant.get('prenom'),
+        datNaissance=dirigeant.get('date_naissance'),
+        qualite=dirigeant.get('qualite')
+    )
+
+def construct_organisation(company:dict) -> Organisation:
+    return Organisation(
+        siren=company.get('siren'),
+        raisonSociale=company.get('nom_raison_sociale'),
+        dateCreation=company.get('date_creation'),
+        dateFermeture=company.get('date_fermeture'),
+        adresse=company.get('adresse'),
+        activite=company.get('activite_principale'),
+    )
+
+def find_organisation_by_siren(siren:str, organisations:set[Organisation]) -> Organisation:
+    for organisation in organisations:
+        if organisation.siren == siren:
+            return organisation
+    return None
+
+def serialize_objects(objs:list) -> list:
+    return [obj.to_dict() if hasattr(obj, "to_dict") else str(obj) for obj in objs]
+
+def deep_research(request: str, visited=None, organisations_by_siren=None):
     if visited is None:
         visited = set()
+    if organisations_by_siren is None:
+        organisations_by_siren = {}
 
-    all_infos = {}
-    all_results = get_all_results(request)
+    all_infos = []
+
+    siren = request.split('=')[-1]
+    if siren in visited:
+        existing_organisation = organisations_by_siren.get(siren)
+        if existing_organisation:
+            return [existing_organisation]  # Retourner l'organisation existante!
+        return []
+
+    # Si on arrive ici, c'est qu'on n'a pas visité ce siren encore
+    all_results = get_all_results(API_BASE_URL + siren)
 
     for result in all_results:
-        filtred_result = filter_companys_data(result)
-        siren = filtred_result.get('siren')
-
-        if siren in visited:
-            continue
+        current_company = filter_companys_data(result)
+        organisation = construct_organisation(current_company)
+        siren = organisation.siren
 
         visited.add(siren)
+        organisations_by_siren[siren] = organisation
 
-        dirigeants = filtred_result.get('dirigeants')
-
+        dirigeants = current_company.get('dirigeants')
         if dirigeants:
             for dirigeant in dirigeants:
-                if dirigeant.get('siren'):  # entreprise
+                if dirigeant.get('siren'):
                     child_siren = dirigeant.get('siren')
-                    dirigeant['details'] = deep_research(
+                    child_organisations = deep_research(
                         API_BASE_URL + child_siren,
-                        visited
+                        visited,
+                        organisations_by_siren
                     )
+                    organisation.dirigeants.extend(child_organisations)
+                else:
+                    organisation.dirigeants.append(construct_personne(dirigeant))
 
-        all_infos[siren] = filtred_result
+        all_infos.append(organisation)
 
+    # pprint(all_infos)
     return all_infos
 
 def write_to_json(json_content, json_file):
     if len(json_content) == 0:
         return
     with open(json_file, 'w', encoding='utf-8') as f:
-        json.dump(json_content, f, ensure_ascii=False, indent=4)
+        # pass
+        json.dump(serialize_objects(json_content), f, ensure_ascii=False, indent=4)
 
 def get_argv_elements():
     arguments = argv[1:]
@@ -186,4 +229,4 @@ def get_principal_activity(code:str) -> str:
     else:
         soup = BeautifulSoup(response.text, 'html.parser')
         principal_title = soup.select_one('h2.titre-principal').getText().split(':')[1]
-        return principal_title        
+        return principal_title

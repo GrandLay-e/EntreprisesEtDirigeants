@@ -11,3 +11,5 @@
 /.idea
 /__pycache__
 *.json
+*.html
+testVisual.py
