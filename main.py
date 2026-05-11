@@ -22,7 +22,7 @@ try:
         try:
             response = deep_research(API_BASE_URL + arguments[search_option])
             if len(response) == 0:
-                print("No data found for the given SIREN.")
+                print("No data found for the given Argument.")
                 exit()
             dot = define_dot()
             output_dir = f"outputs/{arguments[search_option]}"

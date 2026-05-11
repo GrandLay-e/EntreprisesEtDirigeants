@@ -238,11 +238,12 @@ def parse_research(arguments, output_extensions):
         if arg.startswith('-'):
             break
         result['search'] += arg + ' '
-    output = parse_output(arguments, output_extensions, "SEARCH QUERY")
-    if isinstance(output, dict) and 'error' in output:
-        return output
-    if output:
-        result['output'] = output
+    if any(arg == '-o' or arg == '--output' for arg in arguments):
+        output = parse_output(arguments, output_extensions, "SEARCH QUERY")
+        if isinstance(output, dict) and 'error' in output:
+            return output
+        if output:
+            result['output'] = output
     return result
 
 def parse_output(arguments, output_extensions, searched=None):
