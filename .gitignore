@@ -12,4 +12,7 @@
 /__pycache__
 /outputs/
 /lib/
-testVisual.py
+*.json
+*.svg
+*.pdf
+*.png

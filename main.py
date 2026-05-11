@@ -3,9 +3,10 @@ import time
 from graph_functions import *
 import os
 
-outuput_dir = "outputs"
+output_dir = "outputs"
 response = {}
 start = time.time()
+
 try:
     arguments = get_argv_elements()
     graph_format = 'svg' 
@@ -24,21 +25,21 @@ try:
                 print("No data found for the given SIREN.")
                 exit()
             dot = define_dot()
-            outuput_dir = f"outputs/{arguments[search_option]}"
-            os.makedirs(outuput_dir, exist_ok=True)
+            output_dir = f"outputs/{arguments[search_option]}"
+            os.makedirs(output_dir, exist_ok=True)
             add_nodes_and_edges(dot, response)
-            dot.render(f"{outuput_dir}/graph", format=graph_format, cleanup=True)
-            write_to_json(response, f"{outuput_dir}/response.json")
+            dot.render(f"{output_dir}/graph", format=graph_format, cleanup=True)
+            write_to_json(response, f"{output_dir}/response.json")
             end = time.time()
             print(f"Execution time: {end - start:.2f} seconds")
         except Exception as e:
             print(e)
-            write_to_json(response, f"{outuput_dir}/not_completed.json")
-        write_to_json(response, f"{outuput_dir}/response.json")
+            write_to_json(response, f"{output_dir}/not_completed.json")
+        write_to_json(response, f"{output_dir}/response.json")
 except KeyboardInterrupt:
     print("quitte")
     print(response)
-    write_to_json(response, f"{outuput_dir}/not_completed.json")
+    write_to_json(response, f"{output_dir}/not_completed.json")
 except Exception as e:
     print(e)
-    write_to_json(response, f"{outuput_dir}/not_completed.json")
+    write_to_json(response, f"{output_dir}/not_completed.json")

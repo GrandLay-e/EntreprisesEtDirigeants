@@ -12,20 +12,20 @@ from urllib.parse import urljoin
 from classes import *
 from CONSTS import *
 
-def get_requests_json(request:str) -> dict:
+def get_requests_json(request:str, session: requests.Session) -> dict:
     sleep(0.15) 
-    result = requests.get(request + '&per_page=25')
+    result = session.get(request + '&per_page=25')
     if result.status_code != 200:
         return {
             "error" : " Request error !"
         }
     return result.json()
 
-def get_any_infos(search:str) -> dict:
+def get_any_infos(search:str, session: requests.Session) -> dict:
     if len(search) < 3:
         return {"error": "Search query must be at least 3 characters!"}
     
-    result = get_requests_json(API_BASE_URL + search)
+    result = get_requests_json(API_BASE_URL + search, session)
     
     if "error" in result:
         return result
@@ -35,11 +35,11 @@ def get_any_infos(search:str) -> dict:
     
     return result
 
-def get_infos_by_siren(siren:str) -> dict:
+def get_infos_by_siren(siren:str, session: requests.Session) -> dict:
     if len(siren) != 9 or not siren.isdigit():
         return {"error": "SIREN must be a 9-digit number!"}
     
-    result = get_requests_json(API_BASE_URL + siren)
+    result = get_requests_json(API_BASE_URL + siren, session)
     
     if "error" in result:
         return result
@@ -50,9 +50,9 @@ def get_infos_by_siren(siren:str) -> dict:
     results = result.get('results', [])
     return results[0] if results else {"error": "No data returned"}
 
-def get_all_results(request: str) -> list:
+def get_all_results(request: str, session: requests.Session) -> list:
     all_results = []
-    result = get_requests_json(request)
+    result = get_requests_json(request, session)
     
     if "error" in result:
         return []
@@ -61,7 +61,7 @@ def get_all_results(request: str) -> list:
     
     for i in range(1, nb_pages + 1):
         complete_request = request + f"&page={i}"
-        page_result = get_requests_json(complete_request)
+        page_result = get_requests_json(complete_request, session)
         if "error" not in page_result:
             page_results = page_result.get('results', [])
             if page_results:
@@ -163,17 +163,19 @@ def deep_research(request: str, visited=None, organisations_by_siren=None, sessi
     # Mark as visited before processing
     visited.add(siren)
     
+    # Manage session
+    should_close_session = session is None
+    if session is None:
+        print("Opening session")
+        session = requests.Session()
+        
     # Fetch data from API
-    all_results = get_all_results(API_BASE_URL + siren)
+    all_results = get_all_results(API_BASE_URL + siren, session)
     if not all_results:
         return []
     
     all_infos = []
 
-    should_close_session = session is None
-    if session is None:
-        print("Opening session")
-        session = requests.Session()
     for result in all_results:
         try:
             current_company = filter_companys_data(result, session)
