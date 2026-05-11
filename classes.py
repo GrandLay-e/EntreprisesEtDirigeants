@@ -70,7 +70,7 @@ class Organisation:
 
     def __repr__(self):
         return (
-            f"{self.raisonSociale} :\n"
+            f"{self.raisonSociale} : "
             f"{self.siren}\n"
             f"{self.adresse}\n"
             f"Activité: {self.activite}\n"
