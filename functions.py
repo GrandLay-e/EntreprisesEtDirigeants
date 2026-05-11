@@ -284,7 +284,7 @@ def get_argv_elements():
 
 def display_documentation():
     return f"""
-    Welcome.
+    Welcome to EntreprisesEtDirigeants.
 
     To use this application, execute it with one of the following parameters:
 
@@ -294,9 +294,15 @@ def display_documentation():
     -r, --research <query>
             Perform a research query with the specified text.
 
+    -o, --output <format>
+            Specify output format: pdf, png, or svg.
+
     -h, --help
             Display this help message.
 
+    Example:
+            python main.py -s 123456789 -o pdf
+            python main.py -r "company name" -o svg
     """
 @lru_cache(maxsize=128)
 def _get_activity(code: str) -> str:
