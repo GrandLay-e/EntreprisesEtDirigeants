@@ -38,23 +38,29 @@ def define_edge_label(dirigeant):
 
 def add_nodes_and_edges(dot, organisations, visited=None):
     """Add nodes and edges to the graphviz Digraph based on the organisations."""
+
+    # Use a set to track visited nodes to avoid duplicates
     if visited is None:
         visited = set()
+
     for obj in organisations:
         obj_id = define_node_id(obj)
-        if obj_id in visited:
+        if obj_id in visited: 
             continue
+
         visited.add(obj_id)
+        
         label = str(obj)
         colors = define_node_color(obj)
         shape = define_node_shape(obj)
 
         dot.node(obj_id, label=label, style="filled", fillcolor=colors[0], shape=shape, fontcolor=colors[1])
         if isinstance(obj, Organisation):
+
             for dirigeant in obj.dirigeants:
                 dirigeant_id = define_node_id(dirigeant)
                 dot.edge(obj_id, dirigeant_id, label=define_edge_label(dirigeant), fillcolor="#94A3B8", fontcolor="#CBD5E1")
-                # Add dirigeant node
+                #recusion
                 add_nodes_and_edges(dot, [dirigeant], visited=visited)
                 
 def define_dot():

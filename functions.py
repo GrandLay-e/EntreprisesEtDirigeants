@@ -287,25 +287,25 @@ def get_argv_elements():
 
 def display_documentation():
     return f"""
-    Welcome to EntreprisesEtDirigeants.
+    Bienvenue dans Entreprises Et Dirigeants.
 
-    To use this application, execute it with one of the following parameters:
+    Pour utiliser cette application, exécutez-la avec l'un des paramètres suivants :
 
-    -s, --siren <9-digit number>
-            Search using a valid SIREN number (e.g., 123456789).
+    -s, --siren <nombre à 9 chiffres>
+            Rechercher en utilisant un numéro SIREN valide (ex: 123456789).
 
-    -r, --research <query>
-            Perform a research query with the specified text.
+    -r, --research <requête>
+            Effectuer une recherche avec le texte spécifié.
 
     -o, --output <format>
-            Specify output format: pdf, png, or svg.
+            Spécifier le format de sortie : pdf, png ou svg.
 
     -h, --help
-            Display this help message.
+            Afficher ce message d'aide.
 
-    Example:
-            python main.py -s 123456789 -o pdf
-            python main.py -r "company name" -o svg
+    Exemples :
+            python3 main.py -s 123456789 -o pdf
+            python3 main.py -r "nom de l'entreprise" -o svg
     """
 @lru_cache(maxsize=128)
 def _get_activity(code: str) -> str:
