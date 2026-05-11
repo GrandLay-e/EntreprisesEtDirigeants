@@ -1,33 +1,20 @@
-import json
-from pyvis.network import Network
-
 class Personne:
-    def __init__(self, nom: str, prenom: str, datNaissance: str, qualite: str = None):
+    def __init__(self, nom: str, prenom: str, dateNaissance: str, qualite: str = None):
         self.nom = nom
         self.prenom = prenom
-        self.datNaissance = datNaissance
+        self.dateNaissance = dateNaissance
         self.qualite = qualite
 
-    def to_dict(self):
+    def to_dict(self, visited=None):
         return {
             "nom": self.nom,
             "prenom": self.prenom,
-            "datNaissance": self.datNaissance,
+            # "dateNaissance": self.dateNaissance,
             "qualite": self.qualite
         }
 
-    def to_html(self):
-        return f"""
-        <div style='width:200px'>
-            <h3>👤 Personne</h3>
-            <b>{self.prenom} {self.nom}</b><br>
-            Né(e) : {self.datNaissance}
-            <b>Qualité :</b> {self.qualite}<br>
-        </div>
-        """
-
     def __repr__(self):
-        return f"{self.nom} {self.prenom} né(e) {self.datNaissance} ({self.qualite})"
+        return f"{self.nom} {self.prenom}"
 
 
 class Organisation:
@@ -51,17 +38,25 @@ class Organisation:
         self.qualite = qualite
         self.dirigeants = list(dirigeants) if dirigeants else []
     
-    def dirigeants_to_dict(self):
+    def dirigeants_to_dict(self, visited):
         dirigeants_dicts = []
         for dirigeant in self.dirigeants:
-            if isinstance(dirigeant, Personne) or isinstance(dirigeant, Organisation):
-                dirigeants_dicts.append(dirigeant.to_dict())
+            if isinstance(dirigeant, (Personne, Organisation)):
+                dirigeants_dicts.append(dirigeant.to_dict(visited))
             else:
                 print("Dirigeant non sérialisable, ajout en tant que string : ", dirigeant)
                 dirigeants_dicts.append(str(dirigeant))
         return dirigeants_dicts
 
-    def to_dict(self):
+    def to_dict(self, visited=None):
+
+        if visited is None:
+            visited = set()
+
+        if self.siren in visited:
+            return {"siren": self.siren}
+        
+        visited.add(self.siren)
         return {
             "siren": self.siren,
             "raisonSociale": self.raisonSociale,
@@ -70,28 +65,15 @@ class Organisation:
             "adresse": self.adresse,
             "activite": self.activite,
             "qualite": self.qualite,
-            "dirigeants": self.dirigeants_to_dict()
+            "dirigeants": self.dirigeants_to_dict(visited)
         }
-
-    def to_html(self):
-        return f"""
-          <div style='width:300px'>
-              <h2>🏢 {self.raisonSociale}</h2>
-              <b>SIREN :</b> {self.siren}<br>
-              <b>Activité :</b> {self.activite}<br>
-              <b>Adresse :</b> {self.adresse}<br>
-              <b>Qualité :</b> {self.qualite}<br>
-          </div>
-          """
 
     def __repr__(self):
         return (
-            f"  siren: {self.siren!r},\n"
-            f"  raisonSociale: {self.raisonSociale!r},\n"
-            f"  dateCreation: {self.dateCreation!r},\n"
-            f"  dateFermeture: {self.dateFermeture!r},\n"
-            f"  adresse: {self.adresse!r},\n"
-            f"  activite: {self.activite!r}\n"
-            f"  qualite: {self.qualite!r}\n"
-            f"  dirigeants: {self.dirigeants!r}\n\n"
+            f"{self.raisonSociale} :\n"
+            f"{self.siren}\n"
+            f"{self.adresse}\n"
+            f"Activité: {self.activite}\n"
+            f"Création: {self.dateCreation}\n"
+            f"Fermeture: {self.dateFermeture}"
         )

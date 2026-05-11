@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import requests
 from bs4 import BeautifulSoup
 import json
@@ -11,7 +13,6 @@ from classes import *
 from CONSTS import *
 
 def get_requests_json(request:str) -> dict:
-    print(f"Requesting : {request}")
     sleep(0.15) 
     result = requests.get(request + '&per_page=25')
     if result.status_code != 200:
@@ -95,13 +96,13 @@ def filtred_dirigeants_data(dirigeants: list[dict]) -> list:
     
     return all_dirigeants
 
-def filter_companys_data(company: dict) -> dict:
+def filter_companys_data(company: dict, session: requests.Session) -> dict:
     siege = company.get('siege', {})
     
     # Safely extract siege data with null checking
     adresse = siege.get('adresse') if isinstance(siege, dict) else None
     activite_code = siege.get('activite_principale') if isinstance(siege, dict) else None
-    activite = get_principal_activity(activite_code) if activite_code else "Unknown"
+    activite = get_principal_activity(activite_code, session) if activite_code else "Unknown"
     
     base_data = {key: value for key, value in company.items() 
                  if key in ['siren', 'nom_raison_sociale', 'date_creation', 'date_fermeture']}
@@ -117,7 +118,7 @@ def construct_personne(dirigeant:dict) -> Personne:
     return Personne(
         nom=dirigeant.get('nom'),
         prenom=dirigeant.get('prenom'),
-        datNaissance=dirigeant.get('date_naissance'),
+        dateNaissance=dirigeant.get('date_naissance'),
         qualite=dirigeant.get('qualite')
     )
 
@@ -140,10 +141,11 @@ def find_organisation_by_siren(siren:str, organisations:set[Organisation]) -> Or
 def serialize_objects(objs:list) -> list:
     return [obj.to_dict() if hasattr(obj, "to_dict") else str(obj) for obj in objs]
 
-def deep_research(request: str, visited=None, organisations_by_siren=None):
+def deep_research(request: str, visited=None, organisations_by_siren=None, session=None) -> list:
     """Recursively research organisations and their leaders."""
     if visited is None:
         visited = set()
+
     if organisations_by_siren is None:
         organisations_by_siren = {}
     
@@ -167,27 +169,30 @@ def deep_research(request: str, visited=None, organisations_by_siren=None):
         return []
     
     all_infos = []
-    
+
+    should_close_session = session is None
+    if session is None:
+        print("Opening session")
+        session = requests.Session()
     for result in all_results:
         try:
-            current_company = filter_companys_data(result)
+            current_company = filter_companys_data(result, session)
             organisation = construct_organisation(current_company)
             result_siren = organisation.siren
             
-            # Store organization
             organisations_by_siren[result_siren] = organisation
             
-            # Process leaders
             dirigeants = current_company.get('dirigeants', [])
             for dirigeant in dirigeants:
-                if dirigeant.get('siren'):  # Organisation leader
+                if dirigeant.get('siren'):  
                     child_orgs = deep_research(
                         API_BASE_URL + dirigeant['siren'],
                         visited,
-                        organisations_by_siren
+                        organisations_by_siren,
+                        session
                     )
                     organisation.dirigeants.extend(child_orgs)
-                else:  # Person leader
+                else:  
                     organisation.dirigeants.append(construct_personne(dirigeant))
             
             all_infos.append(organisation)
@@ -195,44 +200,87 @@ def deep_research(request: str, visited=None, organisations_by_siren=None):
         except Exception as e:
             print(f"Error processing organisation: {str(e)}")
             continue
-    
+
+    if session and should_close_session:
+        print("Closing session")
+        session.close()
     return all_infos
 
 def write_to_json(json_content, json_file):
     if len(json_content) == 0:
         return
     with open(json_file, 'w', encoding='utf-8') as f:
-        # pass
         json.dump(serialize_objects(json_content), f, ensure_ascii=False, indent=4)
 
-def get_argv_elements():
-    arguments = argv[1:]
-    
-    if not arguments:
-        return {'error': 'No arguments provided. Use -h or --help for usage.'}
-    
-    if len(arguments) > 2 and arguments[0] not in ['-r', '--research']:
-        return {'error': 'Too many arguments. Expected 1-2 arguments.'}
-    
-    if arguments[0] in ['-s', '--siren']:
-        if len(arguments) < 2:
+def parse_siren(arguments, output_extensions):
+    if not arguments[1:]:
             return {'error': 'SIREN value required after -s or --siren'}
-        if len(arguments[1]) != 9 or not arguments[1].isdigit():
-            return {'error': 'SIREN must be a 9-digit number'}
-        return {'siren': arguments[1]}
+    if len(arguments[1]) != 9 or not arguments[1].isdigit():
+        return {'error': 'SIREN must be a 9-digit number'}
+    result = {'siren': arguments[1]}
+    output = parse_output(arguments, output_extensions, "SIREN")
+    if isinstance(output, dict) and 'error' in output:
+        return output
+    if output:
+        result['output'] = output
+    return result
+        
+
+
+def parse_research(arguments, output_extensions):
+    if len(arguments) < 2:
+        return {'error': 'Search query required after -r or --research'}
     
-    elif arguments[0] in ['-r', '--research']:
-        if len(arguments) < 2:
-            return {'error': 'Search query required after -r or --research'}
-        return {'search': ' '.join(arguments[1:])}
+    result = {'search' : ''}
+    for arg in arguments[1:]:
+        if arg.startswith('-'):
+            break
+        result['search'] += arg + ' '
+    output = parse_output(arguments, output_extensions, "SEARCH QUERY")
+    if isinstance(output, dict) and 'error' in output:
+        return output
+    if output:
+        result['output'] = output
+    return result
+
+def parse_output(arguments, output_extensions, searched=None):
+    if len(arguments) > 3 and arguments[-2] in ['-o', '--output']:
+        if arguments[-1] in output_extensions:
+            return arguments[-1]
+        else:
+            return {'error': f"Invalid output extension. Use one of: {', '.join(output_extensions)}"}
+    elif len(arguments) > 2:
+        return {'error': f'Invalid arguments after {searched}. Use -o or --output for output file name.'}
+    return None
+
+def parse_help(arguments):
+    if len(arguments) > 1:
+        return {'error': 'No arguments should follow -h or --help'}
+    return {'help': 1}
+
+def get_argv_elements():
+    if len(argv) < 2:
+        return {'error': 'No arguments provided. Use -h or --help for usage.'}
+
+    output_extensions = ['pdf', 'png', 'svg']
+
+    arguments = argv[1:]
+
+    cmd = arguments[0]
+
+    # HELP
+    if cmd in ['-h', '--help']:
+        return parse_help(arguments)
+
+    # SIREN
+    if cmd in ['-s', '--siren']:
+        return parse_siren(arguments, output_extensions)        
+
+    # RESEARCH
+    if cmd in ['-r', '--research']:
+        return parse_research(arguments, output_extensions)
     
-    elif arguments[0] in ['-h', '--help']:
-        if len(arguments) > 1:
-            return {'error': 'No arguments should follow -h or --help'}
-        return {'help': 1}
-    
-    else:
-        return {'error': f'Unknown argument: {arguments[0]}. Use -h for help.'}
+    return {'error': f'Unknown argument: {cmd}. Use -h for help.'}
 
 def display_documentation():
     return f"""
@@ -250,8 +298,8 @@ def display_documentation():
             Display this help message.
 
     """
-
-def get_principal_activity(code: str) -> str:
+@lru_cache(maxsize=128)
+def _get_activity(code: str) -> str:
     if not code:
         return "No activity code provided"
     
@@ -274,3 +322,6 @@ def get_principal_activity(code: str) -> str:
     
     except Exception as e:
         return f"Activity lookup error: {str(e)}"
+    
+def get_principal_activity(code: str, session: requests.Session) -> str:
+    return _get_activity(code)

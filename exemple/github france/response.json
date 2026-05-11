@@ -1,0 +1,28 @@
+[
+    {
+        "siren": "985180215",
+        "raisonSociale": "GITHUB FRANCE",
+        "dateCreation": "2024-02-27",
+        "dateFermeture": null,
+        "adresse": "37 QUAI DU PRESIDENT ROOSEVELT 92130 ISSY-LES-MOULINEAUX",
+        "activite": "Programmation informatique",
+        "qualite": null,
+        "dirigeants": [
+            {
+                "nom": "DOLLIVER",
+                "prenom": "KEITH RANGER",
+                "qualite": "Directeur Général"
+            },
+            {
+                "nom": "GAUTHIER",
+                "prenom": "FABIEN LAURENT",
+                "qualite": "Président de SAS"
+            },
+            {
+                "nom": "ORNDORFF",
+                "prenom": "BENJAMIN OWEN",
+                "qualite": "Directeur Général"
+            }
+        ]
+    }
+]

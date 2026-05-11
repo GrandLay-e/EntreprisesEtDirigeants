@@ -10,6 +10,6 @@
 /httpRequests/
 /.idea
 /__pycache__
-*.json
-*.html
+/outputs/
+/lib/
 testVisual.py
